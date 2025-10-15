@@ -67,7 +67,7 @@ class WikiClient(object):
                                                  credentials=credentials, **kwargs)
 
         if cargo is True:
-            self.cargo_client = CargoClient(self.client)
+            self.cargo_client = CargoClient(self.client, self.credentials, self.max_retries, self.retry_interval)
         self._localization_cache = {}
 
     def login(self):

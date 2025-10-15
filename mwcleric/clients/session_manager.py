@@ -36,6 +36,15 @@ class SessionManager(object):
             client.login(username=credentials.username, password=credentials.password)
         self.existing_wikis[url] = {'client': client}
         return client
+    
+    @staticmethod
+    def relog(client: Site, credentials: AuthCredentials):
+        if credentials is None:
+            return
+        # we clear cookies to prevent mwclient from trying
+        # to log in as an already authenticated user which fails
+        client.connection.cookies.clear()
+        client.login(username=credentials.username, password=credentials.password)
 
 
 session_manager = SessionManager()

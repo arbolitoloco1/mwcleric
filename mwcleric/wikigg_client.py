@@ -52,9 +52,8 @@ class WikiggClient(WikiClient):
             super().__init__(url=url, path=path, credentials=credentials, client=client, **kwargs)
             self.is_public = False
 
-        self.cargo_client = CargoClient(self.client)
-        self.credentials = credentials
+        self.cargo_client = CargoClient(self.client, self.credentials, self.max_retries, self.retry_interval)
 
     def relog(self):
         super().relog()
-        self.cargo_client = CargoClient(self.client)
+        self.cargo_client = CargoClient(self.client, self.credentials, self.max_retries, self.retry_interval)

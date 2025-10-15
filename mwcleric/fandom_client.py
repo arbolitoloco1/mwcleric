@@ -32,11 +32,11 @@ class FandomClient(WikiClient):
         self.lang = '/' + ('' if lang is None else lang + '/')
         super().__init__(url=url, path=self.lang, credentials=credentials, client=client, **kwargs)
 
-        self.cargo_client = CargoClient(self.client)
+        self.cargo_client = CargoClient(self.client, self.credentials, self.max_retries, self.retry_interval)
 
     def relog(self):
         super().relog()
-        self.cargo_client = CargoClient(self.client)
+        self.cargo_client = CargoClient(self.client, self.credentials, self.max_retries, self.retry_interval)
 
     def login(self):
         if self.credentials is None:

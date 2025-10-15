@@ -1,6 +1,11 @@
 from typing import Union, List, Optional
+import time
 
 from mwcleric.clients.site import Site
+from mwcleric.auth_credentials import AuthCredentials
+from mwcleric.clients.session_manager import session_manager
+from mwcleric.errors import RetriedLoginAndStillFailed
+from mwclient.errors import APIError
 
 
 class CargoClient(object):
@@ -9,8 +14,37 @@ class CargoClient(object):
     """
     client = None
 
-    def __init__(self, client: Site, **kwargs):
+    def __init__(self, client: Site, credentials: AuthCredentials, max_retries: int, retry_interval: int, **kwargs):
         self.client = client
+        self.credentials = credentials
+        self.max_retries = max_retries
+        self.retry_interval = retry_interval
+
+    def _make_cargoquery_api_call(self, data, error_codes=[], retry_count=0):
+        try:
+            return self.client.api('cargoquery', **data)
+        except APIError as e:
+            if e.code not in ['ratelimited', 'permissiondenied'] or self.max_retries == 0:
+                raise e
+            # don't retry if permission is denied and we are logged out
+            if e.code == 'permissiondenied' and self.credentials is None:
+                raise e
+            
+            if retry_count >= self.max_retries:
+                raise RetriedLoginAndStillFailed("cargoquery", error_codes)
+
+            error_codes.append(e.code)
+            session_manager.relog(self.client, self.credentials)
+            
+            # don't sleep at all the first retry, and then increment in retry_interval intervals
+            # default interval is 10, default retries is 3
+            time.sleep((2 ** retry_count - 1) * self.retry_interval)
+
+            # only retry once if error is permissiondenied
+            if e.code == "permissiondenied":
+                retry_count = self.max_retries
+
+            return self._make_cargoquery_api_call(data, error_codes, retry_count+1)
 
     def query(self, *, tables: Union[str, List[str]], fields: Union[str, List[str]],
               where: Optional[str] = None, join_on: Optional[Union[str, List[str]]] = None,
@@ -46,7 +80,7 @@ class CargoClient(object):
                 data[field_name] = field
         ret = []
         while True:
-            response = self.client.api('cargoquery', **data)
+            response = self._make_cargoquery_api_call(data)
             for item in response['cargoquery']:
                 ret.append(item['title'])
             if not auto_continue or response['limits']['cargoquery'] > len(response['cargoquery']):
@@ -68,13 +102,13 @@ class CargoClient(object):
         if isinstance(fields, list):
             fields = ', '.join(fields)
         field = fields.split('=')[1] if '=' in fields else fields
-        group_by = fields.split('=')[0]
-        response = self.client.api('cargoquery',
-                                   fields=fields,
-                                   group_by=group_by,
-                                   limit=limit,
-                                   **kwargs
-                                   )
+        data = {
+            'fields': fields,
+            'group_by': fields.split('=')[0],
+            'limit': limit,
+            **kwargs
+        }
+        response = self._make_cargoquery_api_call(data)
         pages = []
         for item in response['cargoquery']:
             page = page_pattern % item['title'][field]
