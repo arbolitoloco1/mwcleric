@@ -187,14 +187,26 @@ class WikiClient(object):
                                   prop='title|ids|tags|user|patrolled', **kwargs):
         now = datetime.utcnow() - timedelta(minutes=offset)
         then = now - timedelta(minutes=minutes)
-        result = self.client.recentchanges(
+        try:
+            return self.client.recentchanges(
+                start=now.isoformat(),
+                end=then.isoformat(),
+                limit='max',
+                prop=prop,
+                **kwargs
+            )
+        except ReadTimeout:
+            self._retry_login_action(self._retry_recentchanges_by_interval, 'recentchanges_by_interval',
+                                        now=now, then=then, prop=prop, **kwargs)
+
+    def _retry_recentchanges_by_interval(self, now, then, prop, **kwargs):
+        return self.client.recentchanges(
             start=now.isoformat(),
             end=then.isoformat(),
             limit='max',
             prop=prop,
             **kwargs
         )
-        return result
 
     def recent_titles_by_interval(self, *args, **kwargs):
         revisions = self.recentchanges_by_interval(*args, **kwargs, toponly=0)
@@ -269,15 +281,31 @@ class WikiClient(object):
                          leprop='details|type|title|tags', **kwargs):
         now = datetime.utcnow() - timedelta(minutes=offset)
         then = now - timedelta(minutes=minutes)
+        try:
+            logs = self.client.api('query', format='json',
+                                list='logevents',
+                                #  lestart=now.isoformat(),
+                                leend=then.isoformat(),
+                                leprop=leprop,
+                                lelimit=lelimit,
+                                ledir='older',
+                                **kwargs
+                                )
+            return logs['query']['logevents']
+        except ReadTimeout:
+            self._retry_action(self._retry_logs_by_interval, 'logs_by_interval',
+                                now=now, then=then, lelimit=lelimit, leprop=leprop, **kwargs)
+
+    def _retry_logs_by_interval(self, now, then, lelimit, leprop, **kwargs):
         logs = self.client.api('query', format='json',
-                               list='logevents',
-                               #  lestart=now.isoformat(),
-                               leend=then.isoformat(),
-                               leprop=leprop,
-                               lelimit=lelimit,
-                               ledir='older',
-                               **kwargs
-                               )
+                                list='logevents',
+                                #  lestart=now.isoformat(),
+                                leend=then.isoformat(),
+                                leprop=leprop,
+                                lelimit=lelimit,
+                                ledir='older',
+                                **kwargs
+                                )
         return logs['query']['logevents']
 
     def patrol(self, revid=None, rcid=None, **kwargs):
