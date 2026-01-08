@@ -39,7 +39,7 @@ class CargoClient(object):
             'group_by': group_by,
             'order_by': order_by,
             'offset': offset,
-            'limit': limit,
+            'api_chunk_size': limit,
         }
         for field_name, field in fields_to_add.items():
             if field is not None:
@@ -72,7 +72,7 @@ class CargoClient(object):
         response = self.client.api('cargoquery',
                                    fields=fields,
                                    group_by=group_by,
-                                   limit=limit,
+                                   api_chunk_size=limit,
                                    **kwargs
                                    )
         pages = []
