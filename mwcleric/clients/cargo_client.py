@@ -82,6 +82,10 @@ class CargoClient(object):
         while True:
             response = self._make_cargoquery_api_call(data)
             for item in response['cargoquery']:
+                for k, v in item['title'].items():
+                    if v != '':
+                        continue
+                    item['title'][k] = None
                 ret.append(item['title'])
             if not auto_continue or response['limits']['cargoquery'] > len(response['cargoquery']):
                 break
