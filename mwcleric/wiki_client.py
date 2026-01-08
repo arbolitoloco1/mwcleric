@@ -293,7 +293,7 @@ class WikiClient(object):
                                 )
             return logs['query']['logevents']
         except ReadTimeout:
-            self._retry_action(self._retry_logs_by_interval, 'logs_by_interval',
+            self._retry_login_action(self._retry_logs_by_interval, 'logs_by_interval',
                                 now=now, then=then, lelimit=lelimit, leprop=leprop, **kwargs)
 
     def _retry_logs_by_interval(self, now, then, lelimit, leprop, **kwargs):
