@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import time
 import calendar
 from typing import Optional, Union, List, Dict, Generator
@@ -173,7 +173,7 @@ class WikiClient(object):
         else:
             title = template
         return self.client.pages[title].embeddedin(namespace=namespace, filterredir=filterredir,
-                                                   limit=limit, generator=generator)
+                                                   api_chunk_size=limit, generator=generator)
 
     def _pages_using_gen(self, template: List[str], namespace: Optional[int], filterredir,
                          limit) -> Generator[Page, None, None]:
@@ -185,7 +185,7 @@ class WikiClient(object):
 
     def recentchanges_by_interval(self, minutes, offset=0,
                                   prop='title|ids|tags|user|patrolled', **kwargs):
-        now = datetime.utcnow() - timedelta(minutes=offset)
+        now = datetime.now(tz=UTC) - timedelta(minutes=offset)
         then = now - timedelta(minutes=minutes)
         try:
             return self.client.recentchanges(
@@ -203,7 +203,7 @@ class WikiClient(object):
         return self.client.recentchanges(
             start=now.isoformat(),
             end=then.isoformat(),
-            limit='max',
+            api_chunk_size='max',
             prop=prop,
             **kwargs
         )
@@ -279,7 +279,7 @@ class WikiClient(object):
     def logs_by_interval(self, minutes, offset=0,
                          lelimit="max",
                          leprop='details|type|title|tags', **kwargs):
-        now = datetime.utcnow() - timedelta(minutes=offset)
+        now = datetime.now(tz=UTC) - timedelta(minutes=offset)
         then = now - timedelta(minutes=minutes)
         try:
             logs = self.client.api('query', format='json',
